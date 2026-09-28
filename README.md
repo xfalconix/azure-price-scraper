@@ -1,100 +1,154 @@
-# Azure Price Scraper — ejercicio con HTTP Trigger
+# 🌐 Azure Price Scraper — HTTP Trigger
 
-Proyecto académico de Python y Azure Functions para consultar el nombre y el precio de un producto en una página con una estructura HTML concreta. Devuelve una respuesta de texto con los campos extraídos, la fecha de consulta y la URL.
+<a href="https://azure.microsoft.com/services/functions"><img src="https://img.shields.io/badge/Azure%20Functions-0062AD?style=flat-square&logo=microsoftazure&logoColor=white" alt="Azure Functions"/></a>
+<a href="https://pypi.org/project/requests/"><img src="https://img.shields.io/badge/requests-FF6849?style=flat-square&logo=python&logoColor=white" alt="requests"/></a>
+<a href="https://github.com/xfalconix/azure-price-scraper/actions"><img src="https://github.com/xfalconix/azure-price-scraper/actions/workflows/main_httptriggerpriceweb.yml/badge.svg" alt="CI"/></a>
 
-Desarrollado por Carlos Falconi durante clases guiadas del Máster de ESESA y posteriormente incorporado a su portafolio. El autor realizó el ejercicio de clase sin generación de código por IA; la documentación se preparó y revisó posteriormente con asistencia de IA.
+Azure Function con **HTTP Trigger** que hace web scraping de precios de productos: extrae nombre y precio de páginas compatibles con los marcadores HTML del código y devuelve la información en texto plano con timestamp.
 
-## Qué implementa
+---
 
-- Una Azure Function con la ruta `http_trigger_precios_web`.
-- Lectura de una URL desde el parámetro `url`; si falta, utiliza la página de ejemplo de AFT Grupo definida en el código.
-- Descarga del HTML mediante `requests.get`, con timeout de 10 segundos y comprobación de errores HTTP.
-- Extracción mediante `str.find`, índices y recortes de texto. **No utiliza BeautifulSoup ni un navegador automatizado.**
-- Respuesta con producto, precio, timestamp y URL. El precio se conserva como texto, no se convierte a un valor numérico.
-- Respuesta HTTP 502 cuando la descarga produce una excepción de `requests`.
+## 🎯 Objetivo
 
-## Flujo
+Practicar peticiones HTTP, extracción de datos de HTML y respuestas mediante Azure Functions. El alcance actual es una consulta puntual de un producto; el histórico y las alertas quedan como posibles ampliaciones.
 
-Petición HTTP con URL → Azure Function → descarga del HTML → búsqueda de marcadores → respuesta de texto.
+---
 
-El extractor depende de estos marcadores literales:
+## ⚡ Arquitectura
 
-| Campo | Inicio | Final |
-|---|---|---|
-| Nombre | `<strong>DESCRIPCIÓN:</strong><br>` | `<br />` |
-| Precio | `<div class="precio_ficha">` | `</div>` |
-
-**Cambiar la URL no convierte el extractor en compatible con cualquier web.** Si cambia el HTML, puede ser necesario adaptar el código. No ejecuta JavaScript para cargar contenido dinámico.
-
-## Entrada y salida
-
-Ruta de ejemplo para una Function App configurada:
-
-```text
-GET https://<function-app-host>/api/http_trigger_precios_web?url=<product-url>
+```
+Petición HTTP (GET)
+       │
+       ▼
+Azure Functions — HTTP Trigger
+       │
+       ▼
+requests.get(URL)  →  str.find() + text slicing
+       │
+       ▼
+Respuesta: nombre + precio + timestamp
 ```
 
-Formato ilustrativo de respuesta; no es un precio real ni una prueba de disponibilidad actual:
+---
 
-```text
-Producto:   Example product
-Precio:     12,50 €
+## 🛠 Stack Tecnológico
+
+| Componente | Tecnología |
+|-----------|------------|
+| Serverless | Azure Functions (Python) |
+| HTTP Client | `requests` |
+| Despliegue configurado | GitHub Actions |
+| Python del workflow | 3.11 |
+
+---
+
+## 📡 Uso de la API
+
+### Endpoint
+
+```
+GET https://<your-function-app>.azurewebsites.net/api/http_trigger_precios_web
+```
+
+### Parámetros
+
+| Parámetro | Tipo | Descripción |
+|-----------|------|-------------|
+| `url` | query string | URL del producto a consultar (opcional; utiliza la URL de ejemplo del código si se omite) |
+
+### Ejemplo de respuesta
+
+Formato ilustrativo; los valores no representan una consulta actual.
+
+```
+Producto:   Válvula de bola DN50 3-piece SS316
+Precio:     89,50 €
 Timestamp:  2026-04-15 10:32:01
-URL:        https://example.com/product
+URL:        https://www.aftgrupo.com/productos/ref-14062510
 ```
 
-Si no encuentra los marcadores, devuelve `No encontrado` para el campo correspondiente, pero mantiene HTTP 200. Por tanto, un estado 200 no garantiza que haya extraído ambos campos. El timestamp utiliza la hora del entorno de ejecución, sin zona horaria explícita.
-
-## Archivos principales
-
-| Archivo | Contenido |
-|---|---|
-| `function_app.py` | Función HTTP y lógica de extracción |
-| `2026_04_15_obtener_precio_de_web_para_azure_functions.ipynb` | Notebook del ejercicio |
-| `host.json` | Configuración del runtime |
-| `requirements.txt` | Dependencias declaradas; véase la nota siguiente |
-| `.github/workflows/main_httptriggerpriceweb.yml` | Workflow de construcción y despliegue a Azure |
-| `Captura de pantalla.png`, `Captura de pantalla 2.png` | Capturas del proyecto; no acreditan disponibilidad actual |
-
-## Ejecución local y estado del despliegue
-
-El workflow del repositorio especifica Python 3.11. Para probar localmente se necesita un entorno Python compatible y Azure Functions Core Tools instalado y configurado.
-
-`requirements.txt` incluye `logging` y `datetime`, aunque ambos pertenecen a la biblioteca estándar de Python. Ese archivo requiere limpieza antes de reutilizar el flujo de instalación/despliegue. Para una prueba local aislada, las dependencias externas utilizadas por la función son `azure-functions` y `requests`:
+### Ejemplo de llamada
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
+curl "https://<your-function-app>.azurewebsites.net/api/http_trigger_precios_web?url=https://www.aftgrupo.com/productos/ref-14062510"
+```
+
+---
+
+## 📁 Estructura del proyecto
+
+```
+.
+├── function_app.py              # Azure Function with HTTP trigger
+├── host.json                    # Azure Functions runtime configuration
+├── requirements.txt             # Python dependencies
+├── .funcignore                  # Deployment exclusions
+├── .github/workflows/           # GitHub Actions deployment workflow
+│   └── main_httptriggerpriceweb.yml
+└── README.md
+```
+
+---
+
+## 🚀 Despliegue
+
+### Requisitos previos
+
+- Cuenta de Azure con Functions habilitado
+- Azure CLI instalado (`az login`)
+- Azure Functions Core Tools
+
+El repositorio incluye un workflow de despliegue a Azure. Su configuración no garantiza que el endpoint esté activo actualmente.
+
+Antes de desplegar, revisar cuenta, recursos, credenciales y dependencias. El código acepta URL sin restringir destinos y declara acceso anónimo: revisar estos puntos antes de exponerlo públicamente.
+
+**Nota:** publicar cambios en `main` puede activar el workflow de despliegue.
+
+---
+
+## 📊 Desarrollo local
+
+Requiere Python y Azure Functions Core Tools. `logging` y `datetime` pertenecen a la biblioteca estándar; no necesitan instalación como paquetes externos, aunque figuren en el `requirements.txt` actual. Utiliza un entorno virtual para instalar las dependencias.
+
+```bash
+# Install the external packages used by the function
 python -m pip install azure-functions requests
+
+# Start the local runtime
 func start
-```
 
-Con el servicio local iniciado, se puede consultar la URL de ejemplo ya definida en el código:
-
-```bash
+# Request the product URL configured in the code
 curl "http://localhost:7071/api/http_trigger_precios_web"
 ```
 
-Esta llamada descarga una página externa. Verificar las condiciones del sitio antes de usarlo y evitar peticiones repetitivas. La extracción actual de esa web y el arranque del runtime no se han revalidado en la revisión documental del 28/09/2026.
+---
 
-**Atención al workflow:** un push a `main` o una ejecución manual pueden iniciar el despliegue configurado a Azure. No contiene una etapa de tests automatizados. Revisar recursos, credenciales y costes antes de ejecutarlo; no equivale a una garantía de que el endpoint esté activo hoy.
+## 🔧 Personalización
 
-## Limitaciones antes de exponerlo públicamente
+Para apuntar a una web diferente, modifica los tags HTML en `function_app.py`:
 
-- La función declara acceso anónimo y acepta una URL suministrada por el usuario sin limitar los destinos. Antes de exponerla, restringir destinos y redirecciones a los necesarios, bloquear acceso a redes internas y revisar autenticación y límites de peticiones.
-- No existe validación robusta del HTML ni normalización de precios.
-- Los errores de descarga se incluyen en la respuesta; revisar qué detalles se muestran al cliente.
-- No se han implementado almacenamiento histórico, alertas, ejecución periódica ni seguimiento automático de cambios de precio.
-- Es un prototipo académico, no una plataforma de monitorización de precios en producción.
+```python
+start_name_tag = '<strong>DESCRIPCIÓN:</strong><br>'
+start_price_tag = '<div class="precio_ficha">'
+```
 
-## Mejoras pendientes
+Inspecciona el HTML del sitio destino con DevTools (F12) para ajustar los marcadores. Si no aparecen, el campo devuelve `No encontrado`. El extractor no ejecuta JavaScript.
 
-- [ ] Limpiar y fijar dependencias después de probarlas.
-- [ ] Añadir tests con HTML de ejemplo, campos ausentes y errores de descarga.
-- [ ] Restringir las URL aceptadas y revisar el acceso antes de un despliegue público.
-- [ ] Mejorar el parser y la validación de resultados.
-- [ ] Incorporar histórico, programación periódica y alertas si el caso de uso lo requiere.
+---
 
-## Qué permite explicar este proyecto
+## 📌 Mejoras futuras
 
-HTTP trigger, parámetros de consulta, petición a un servicio externo, manejo de excepciones y extracción sencilla mediante operaciones de strings. Su alcance es deliberadamente pequeño: consultar una página compatible y devolver los datos extraídos.
+- [ ] Extracción de múltiples productos en una sola llamada
+- [ ] Almacenamiento de histórico en Azure Cosmos DB o Blob Storage
+- [ ] Alertas por email o Telegram cuando el precio baje
+- [ ] Despliegue con Terraform + infraestructura como código
+- [ ] Tests con Playwright para validar extracción en sitios dinámicos (JS-rendered)
+
+---
+
+## 👤 Autor
+
+Carlos Falconi — Project Engineer transicionando a Data & MLOps  
+📍 ESESA Business School, Málaga — 2025-2026
+
+Ejercicio desarrollado durante clases guiadas y adaptado al portafolio.
